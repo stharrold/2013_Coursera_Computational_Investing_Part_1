@@ -1,0 +1,7 @@
+setup.txt
+
+Start AWS quicklaunch instance of Ubuntu 12.04
+Install QSTK: http://wiki.quantsoftware.org/index.php?title=QSToolKit_Installation_Guide_Ubuntu
+Install emacs: sudo apt-get install emacs
+Install git: sudo apt-get install git
+Setup git repository: https://help.github.com/articles/set-up-git#platform-linux
