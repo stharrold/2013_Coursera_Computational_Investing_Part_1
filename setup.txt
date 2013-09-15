@@ -5,3 +5,7 @@ Install QSTK: http://wiki.quantsoftware.org/index.php?title=QSToolKit_Installati
 Install emacs: sudo apt-get install emacs
 Install git: sudo apt-get install git
 Setup git repository: https://help.github.com/articles/set-up-git#platform-linux
+Check $DISPLAY for QSTK: exit screen, echo $DISPLAY, start screen, export $DISPLAY=<output>
+Write sync script to copy pdf files to desktop. TODO: how to view remotely?
+rsync -Pavz *.pdf harrold@grad09sh.as.utexas.edu:~/Downloads/.
+
