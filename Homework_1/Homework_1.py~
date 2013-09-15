@@ -1,0 +1,15 @@
+#! /usr/bin/env python
+
+'''
+Homework 1
+http://wiki.quantsoftware.org/index.php?title=CompInvestI_Homework_1
+
+Changelog:
+09/15/2013: Created by Samuel Harrold (STH).
+'''
+
+# QSTK Imports
+import QSTK.qstkutil.qsdateutil as du
+import QSTK.qstkutil.tsutil as tsu
+import QSTK.qstkutil.DataAccess as da
+
