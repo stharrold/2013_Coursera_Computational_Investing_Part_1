@@ -8,6 +8,13 @@ Changelog:
 09/22/2013: Created by Samuel Harrold (STH).
 '''
 
+# from
+# http://matplotlib.org/api/pyplot_api.html
+# http://stackoverflow.com/questions/2443702/problem-running-python-matplotlib-in-background-after-ending-ssh-session
+# http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server
+import matplotlib
+matplotlib.use('Agg')
+
 import pandas as pd
 import numpy as np
 import math
@@ -36,7 +43,7 @@ nan = no information about any event.
 
 def find_events(ls_symbols, d_data):
     ''' Finding the event dataframe '''
-    df_close = d_data['close']
+    df_close = d_data['actual_close']
     ts_market = df_close['SPY']
 
     print "Finding Events"
@@ -49,18 +56,21 @@ def find_events(ls_symbols, d_data):
     ldt_timestamps = df_close.index
 
     for s_sym in ls_symbols:
+
+        print "In for loop."
+        print "s_sym = ", s_sym
+        
         for i in range(1, len(ldt_timestamps)):
             # Calculating the returns for this timestamp
             f_symprice_today = df_close[s_sym].ix[ldt_timestamps[i]]
             f_symprice_yest = df_close[s_sym].ix[ldt_timestamps[i - 1]]
-            f_marketprice_today = ts_market.ix[ldt_timestamps[i]]
-            f_marketprice_yest = ts_market.ix[ldt_timestamps[i - 1]]
-            f_symreturn_today = (f_symprice_today / f_symprice_yest) - 1
-            f_marketreturn_today = (f_marketprice_today / f_marketprice_yest) - 1
+            # f_marketprice_today = ts_market.ix[ldt_timestamps[i]]
+            # f_marketprice_yest = ts_market.ix[ldt_timestamps[i - 1]]
+            # f_symreturn_today = (f_symprice_today / f_symprice_yest) - 1
+            # f_marketreturn_today = (f_marketprice_today / f_marketprice_yest) - 1
 
-            # Event is found if the symbol is down more then 3% while the
-            # market is up more then 2%
-            if f_symreturn_today <= -0.03 and f_marketreturn_today >= 0.02:
+            # Event is found if actual close of the stock price drops below $5
+            if f_symprice_today < 5. and f_symprice_yest > 5.:
                 df_events[s_sym].ix[ldt_timestamps[i]] = 1
 
     return df_events
@@ -70,15 +80,20 @@ if __name__ == '__main__':
     dt_end = dt.datetime(2009, 12, 31)
     ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt.timedelta(hours=16))
 
+    print "dt_start = ", dt_start
+    print "dt_end = ", dt_end
+
     dataobj = da.DataAccess('Yahoo')
-    ls_symbols = dataobj.get_symbols_from_list('sp5002012')
+    # ls_symbols = ['AAPL','GOOG']
+    list_name = 'sp2002012'
+    ls_symbols = dataobj.get_symbols_from_list(list_name)
     ls_symbols.append('SPY')
+
+    print "ls_symbols = ", ls_symbols
 
     ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
     ldf_data = dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
     d_data = dict(zip(ls_keys, ldf_data))
-
-    print d_data
 
     for s_key in ls_keys:
         d_data[s_key] = d_data[s_key].fillna(method='ffill')
@@ -88,5 +103,5 @@ if __name__ == '__main__':
     df_events = find_events(ls_symbols, d_data)
     print "Creating Study"
     ep.eventprofiler(df_events, d_data, i_lookback=20, i_lookforward=20,
-                s_filename='MyEventStudy.pdf', b_market_neutral=True, b_errorbars=True,
+                s_filename='MyEventStudy_' + list_name + '.pdf', b_market_neutral=True, b_errorbars=True,
                 s_market_sym='SPY')
