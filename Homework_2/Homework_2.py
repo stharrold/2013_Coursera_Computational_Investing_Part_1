@@ -54,7 +54,8 @@ def find_events(ls_symbols, d_data):
 
     # Time stamps for the event range
     ldt_timestamps = df_close.index
-
+    
+    event_counter = 0
     for s_sym in ls_symbols:
 
         print "In for loop."
@@ -69,10 +70,12 @@ def find_events(ls_symbols, d_data):
             # f_symreturn_today = (f_symprice_today / f_symprice_yest) - 1
             # f_marketreturn_today = (f_marketprice_today / f_marketprice_yest) - 1
 
-            # Event is found if actual close of the stock price drops below $5
-            if f_symprice_today < 5. and f_symprice_yest > 5.:
+            # Event is found if actual close of the stock price drops below $9
+            if f_symprice_today < 9. and f_symprice_yest >= 9.:
                 df_events[s_sym].ix[ldt_timestamps[i]] = 1
+                event_counter += 1
 
+    print "event_counter = ", event_counter
     return df_events
 
 if __name__ == '__main__':
@@ -85,7 +88,7 @@ if __name__ == '__main__':
 
     dataobj = da.DataAccess('Yahoo')
     # ls_symbols = ['AAPL','GOOG']
-    list_name = 'sp2002012'
+    list_name = 'sp5002012'
     ls_symbols = dataobj.get_symbols_from_list(list_name)
     ls_symbols.append('SPY')
 
@@ -103,5 +106,5 @@ if __name__ == '__main__':
     df_events = find_events(ls_symbols, d_data)
     print "Creating Study"
     ep.eventprofiler(df_events, d_data, i_lookback=20, i_lookforward=20,
-                s_filename='MyEventStudy_' + list_name + '.pdf', b_market_neutral=True, b_errorbars=True,
+                s_filename='MyEventStudy_' + list_name + '_Question3_Attempt2.pdf', b_market_neutral=True, b_errorbars=True,
                 s_market_sym='SPY')
