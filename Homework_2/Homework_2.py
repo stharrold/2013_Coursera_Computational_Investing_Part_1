@@ -74,11 +74,11 @@ if __name__ == '__main__':
     ls_symbols = dataobj.get_symbols_from_list('sp5002012')
     ls_symbols.append('SPY')
 
-    print ls_symbols
-
     ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
     ldf_data = dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
     d_data = dict(zip(ls_keys, ldf_data))
+
+    print d_data
 
     for s_key in ls_keys:
         d_data[s_key] = d_data[s_key].fillna(method='ffill')
