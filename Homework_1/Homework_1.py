@@ -20,14 +20,28 @@ import numpy as np
 def main():
 
     # Start and End date of the charts
+    # Example 1:
+    # dt_start = dt.datetime(2010, 1, 1)
+    # dt_end = dt.datetime(2010, 12, 31)
+    # Example 2:
+    # dt_start = dt.datetime(2011, 1, 1)
+    # dt_end = dt.datetime(2011, 12, 31)
+    # Question 1:
+    # dt_start = dt.datetime(2011, 1, 1)
+    # dt_end = dt.datetime(2011, 12, 31)
+    # Question 2:
     dt_start = dt.datetime(2011, 1, 1)
     dt_end = dt.datetime(2011, 12, 31)
 
     # List of symbols
     # Example 1:
-    ls_symbols = ['AAPL', 'GLD', 'GOOG', 'XOM']
+    # ls_symbols = ['AAPL', 'GLD', 'GOOG', 'XOM']
     # Example 2:
     # ls_symbols = ["AXP", "HPQ", "IBM", "HNZ"]
+    # Question 1:
+    # ls_symbols = ['BRCM', 'TXN', 'AMD', 'ADI']
+    # Question 2:
+    ls_symbols = ['AAPL', 'GOOG', 'IBM', 'MSFT'] 
 
     # Allocation
     # Example 1:
