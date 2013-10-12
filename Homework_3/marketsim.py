@@ -43,7 +43,6 @@ def main():
 
     # Reindex orders.
     # TODO: don't loop.
-    print orders_unindexed
     new_index = []
     for idx, row in orders_unindexed.iterrows():
         new_index += [dt.datetime(row['year'],
@@ -55,54 +54,62 @@ def main():
         orders['symbol'].ix[idx] = row['symbol'].strip(' ')
         orders['action'].ix[idx] = row['action'].strip(' ')
         orders['shares'].ix[idx] = row['shares']
-    print orders
 
-    # Fetch stock data.
+    # Fetch stock data and fill in NANs.
     c_dataobj = da.DataAccess('Yahoo')
     ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
     ldf_data = c_dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
     d_data = dict(zip(ls_keys, ldf_data))
-    # Filling the data for NAN
     for s_key in ls_keys:
         d_data[s_key] = d_data[s_key].fillna(method='ffill')
         d_data[s_key] = d_data[s_key].fillna(method='bfill')
         d_data[s_key] = d_data[s_key].fillna(1.0)
 
-    # Create data frame for holdings.
-    holdings = pd.DataFrame(0., index = ldt_timestamps, columns= ['cash'] + ls_symbols)
-    holdings['cash'].ix[ldt_timestamps[0]] = cash_initial
-    print holdings
+    # Create data frame for positions.
+    positions = pd.DataFrame(0., index = ldt_timestamps, columns = ['cash'] + ls_symbols)
+    positions['cash'].ix[ldt_timestamps[0]] = cash_initial
 
-    # Update holdings one day at a time.
+    # Update positions one day at a time.
     # TODO: don't use loops
-    for ts_today in ldt_timestamps:
+    for idx, pos in positions.iterrows():
         try:
-            print orders.ix[ts_today]
+            act = orders['action'].ix[ts_today]
+            sym = orders['symbol'].ix[ts_today]
+            shr = orders['shares'].ix[ts_today]
+            pri = d_data['actual_close'].ix[ts_today]
+            if act == 'BUY':
+                if idx == 0:
+                    pos['cash'].ix[ts_today] = cash_initial - shr*pri
+                else:
+                    pos['cash'].ix[ts_today] = pos['cash'].ix[idx-1] - shr*pri
+                pos[sym].ix[ts_today] += shr
+            else:
+                # TODO: test that all values non-negative
+                pos['cash'].ix[ts_today] = pos['cash'].ix[idx-1] + shr*pri
+                pos[sym].ix[ts_today] -= shr
         except:
             pass
-        # for order in orders.values:
-        #     ts_order = dt.datetime(order[0], order[1], order[2], 16)
-        #     if ts_today == ts_order:
-        #         symbol = order[3].strip(' ')
-        #         price_today = d_data['actual_close'][symbol].ix[ts_today]
-        #         shares = order[5]
-        #         total_today = shares * price_today
-        #         # update balance
-        #         # update holdings
-        #         # update value
-        #         print order[4].strip(' ') # action
-        #         print 
-        #         print d_data['actual_close']
 
-    # if date_today = date_action
-    # if action = buy then value += shares*share_price
-    # if action == sell then value -= shares*share_price
+    print positions
 
-    # Write value
-    # orders.to_csv(values_file, header=False, index=False, mode='a')
+    # Write values from positions.
+    values = np.zeros((len(ldt_timestamps), 4))
+    for idx, row in positions.iterrows():
+        values[idx, 0] = ldt_timestamps[idx].year
+        values[idx, 1] = ldt_timestamps[idx].month
+        values[idx, 2] = ldt_timestamps[idx].day
+        for col in positions.itertuples():
+            values[idx, 3] += row[col]
+
+    print values
+
+    np.savetxt(values_file, values, delimiter=",")
+
+    # positions.to_csv(values_file, header=False, index=False)
     # with open(values_file, "a") as vf:
     #     vf.write(start_value)
     #     vf.write("\n")
+
     return
 
 if __name__ == '__main__':
