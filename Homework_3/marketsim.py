@@ -67,35 +67,27 @@ def main():
 
     # Create data frame for positions.
     positions = pd.DataFrame(0., index = ldt_timestamps, columns = ['cash'] + ls_symbols)
-    positions['cash'].ix[ldt_timestamps[0]] = cash_initial
 
     # Update positions one day at a time.
     # TODO: don't use loops
-    # TODO: check for multiple orders at the same time
     # for idx, pos in positions.iterrows():
     for i, ts_today in enumerate(ldt_timestamps):
-        try:
-            act = orders['action'].ix[ts_today]
-            sym = orders['symbol'].ix[ts_today]
-            shr = orders['shares'].ix[ts_today]
-            pri = d_data['actual_close'].ix[ts_today]
-            if act == 'BUY':
-                if ts_today == dt_start:
-                    positions['cash'].ix[ts_today] = cash_initial - shr*pri
-                    positions[sym].ix[ts_today] = shr
+        if ts_today == dt_start:
+            positions['cash'].ix[ldt_timestamps[0]] = cash_initial
+        else:
+            positions.ix[ts_today] = positions.ix[i-1]
+        for ts_order, order in orders.iterrow():
+            if ts_today == ts_order:
+                act = orders['action'].ix[ts_today]
+                sym = orders['symbol'].ix[ts_today]
+                shr = orders['shares'].ix[ts_today]
+                pri = d_data['actual_close'][sym].ix[ts_today]
+                if act == 'BUY':
+                    positions['cash'].ix[ts_today] -= shr*pri
+                    positions[sym].ix[ts_today] += shr
                 else:
-                    positions['cash'].ix[ts_today] = positions['cash'].ix[i-1] - shr*pri
-                    positions[sym].ix[ts_today] = positions[sym].ix[i-1] + shr
-            else:
-                # TODO: test that all values non-negative
-                if ts_today == dt_start:
-                    positions['cash'].ix[ts_today] = cash_initial + shr*pri
-                    positions[sym].ix[ts_today] = -1. * shr
-                else:
-                    positions['cash'].ix[ts_today] = positions['cash'].ix[idx-1] + shr*pri
-                    positions[sym].ix[ts_today] = positions[sym].ix[i-1] - shr
-        except:
-            pass
+                    positions['cash'].ix[ts_today] += shr*pri
+                    positions[sym].ix[ts_today] -= shr
 
     print positions
 
