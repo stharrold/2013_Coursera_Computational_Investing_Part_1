@@ -51,10 +51,10 @@ def main():
                                   row['day'],
                                   16)]
     orders = orders_unindexed.reindex(index = new_index, columns = ['symbol', 'action', 'shares'])
-    for idx, row in orders_unindexed.iterrows():
-        orders['symbol'].ix[idx] = row['symbol'].strip(' ')
-        orders['action'].ix[idx] = row['action'].strip(' ')
-        orders['shares'].ix[idx] = row['shares']
+    for ts_order, row in orders_unindexed.iterrows():
+        orders['symbol'].ix[ts_order] = row['symbol'].strip(' ')
+        orders['action'].ix[ts_order] = row['action'].strip(' ')
+        orders['shares'].ix[ts_order] = row['shares']
 
     # Fetch stock data and fill in NANs.
     c_dataobj = da.DataAccess('Yahoo')
@@ -71,7 +71,6 @@ def main():
 
     # Update positions one day at a time.
     # TODO: don't use loops
-    # for idx, pos in positions.iterrows():
     for i, ts_today in enumerate(ldt_timestamps):
         if i == 0:
             positions['cash'].ix[ts_today] = cash_initial
@@ -84,32 +83,25 @@ def main():
                 sym = orders['symbol'].ix[ts_today]
                 shr = orders['shares'].ix[ts_today]
                 pri = d_data['actual_close'][sym].ix[ts_today]
+                # TODO: positions.ix[ts_today, [sym]] causes TypeError. Why?
                 if act == 'BUY':
                     positions['cash'].ix[ts_today] -= shr*pri
-                    positions[sym].ix[ts_today] += shr
+                    positions[sym].ix[ts_today]    += shr
                 else:
                     positions['cash'].ix[ts_today] += shr*pri
-                    positions[sym].ix[ts_today] -= shr
+                    positions[sym].ix[ts_today]    -= shr
 
     # Write values from positions.
-    values = np.zeros((len(ldt_timestamps), 4))
+    values = pd.DataFrame(0., index = ldt_timestamps, columns = ['year', 'month', 'day', 'value'])
     for i, ts_today in enumerate(ldt_timestamps):
-        values[i, 0] = ts_today.year
-        values[i, 1] = ts_today.month
-        values[i, 2] = ts_today.day
-        values[i, 3] = positions['cash'].ix[ts_today]
+        values['year'].ix[ts_today]  = ts_today.year
+        values['month'].ix[ts_today] = ts_today.month
+        values['day'].ix[ts_today]   = ts_today.day
+        values['value'].ix[ts_today] = positions.ix[ts_today, ['cash']]
+        # TODO: positions.ix[ts_today, [sym]] causes TypeError. Why?
         for sym in ls_symbols:
-            values[i, 3] += positions.ix[ts_today, [sym]]*d_data['actual_close'].ix[ts_today, [sym]]
-
-    print values
-
-    np.savetxt(values_file, values, delimiter=",")
-
-    # positions.to_csv(values_file, header=False, index=False)
-    # with open(values_file, "a") as vf:
-    #     vf.write(start_value)
-    #     vf.write("\n")
-
+            values['value'].ix[ts_today] += positions[sym].ix[ts_today] * d_data['actual_close'][sym].ix[ts_today]
+    values.to_csv(values_file)
     return
 
 if __name__ == '__main__':
