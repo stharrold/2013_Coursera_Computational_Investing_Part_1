@@ -27,39 +27,73 @@ def main():
     # test that not overwriting another csv file
 
     # Start and end dates
-    dt_start = dt.datetime(2011, 1, 1)
-    dt_end = dt.datetime(2011, 12, 31)
+    dt_start = dt.datetime(2008, 12, 1)
+    dt_end = dt.datetime(2008, 12, 31)
     # We need closing prices so the timestamp should be hours=16.
     dt_timeofday = dt.timedelta(hours=16)
     # Get a list of trading days between the start and the end.
     ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt_timeofday)
 
-    # Read in starting balance, file names, and orders
-    [start_value, orders_file, values_file] = sys.argv[1:4]
+    # Read in starting cash balance, file names, and orders
+    [cash_initial, orders_file, values_file] = sys.argv[1:4]
     # loading text from: http://wiki.quantsoftware.org/index.php?title=QSTK_Tutorial_2
-    orders = pd.read_csv(orders_file, header=False, names=['year', 'month', 'day', 'symbol', 'action', 'shares'],\
+    orders_unindexed = pd.read_csv(orders_file, header=False, names=['year', 'month', 'day', 'symbol', 'action', 'shares'],\
                              dtype={'year':int, 'month':int, 'day':int, 'symbol':str, 'action':str, 'shares':int})
+    ls_symbols = list(set([s.strip(' ') for s in orders_unindexed.symbol.tolist()]))
 
-    print orders.symbol.tolist()
+    # Reindex orders.
+    # TODO: don't loop.
+    print orders_unindexed
+    new_index = []
+    for idx, row in orders_unindexed.iterrows():
+        new_index += [dt.datetime(row['year'],
+                                  row['month'],
+                                  row['day'],
+                                  16)]
+    orders = orders_unindexed.reindex(index = new_index, columns = ['symbol', 'action', 'shares'])
+    for idx, row in orders_unindexed.iterrows():
+        orders['symbol'].ix[idx] = row['symbol'].strip(' ')
+        orders['action'].ix[idx] = row['action'].strip(' ')
+        orders['shares'].ix[idx] = row['shares']
+    print orders
 
-    # # Creating an object of the dataaccess class with Yahoo as the source.
-    # c_dataobj = da.DataAccess('Yahoo')
+    # Fetch stock data.
+    c_dataobj = da.DataAccess('Yahoo')
+    ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
+    ldf_data = c_dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
+    d_data = dict(zip(ls_keys, ldf_data))
+    # Filling the data for NAN
+    for s_key in ls_keys:
+        d_data[s_key] = d_data[s_key].fillna(method='ffill')
+        d_data[s_key] = d_data[s_key].fillna(method='bfill')
+        d_data[s_key] = d_data[s_key].fillna(1.0)
 
-    # # Keys to be read from the data, it is good to read everything in one go.
-    # ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
+    # Create data frame for holdings.
+    holdings = pd.DataFrame(0., index = ldt_timestamps, columns= ['cash'] + ls_symbols)
+    holdings['cash'].ix[ldt_timestamps[0]] = cash_initial
+    print holdings
 
-    # # Reading the data, now d_data is a dictionary with the keys above.
-    # # Timestamps and symbols are the ones that were specified before.
-    # ldf_data = c_dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
-    # d_data = dict(zip(ls_keys, ldf_data))
+    # Update holdings one day at a time.
+    # TODO: don't use loops
+    for ts_today in ldt_timestamps:
+        try:
+            print orders.ix[ts_today]
+        except:
+            pass
+        # for order in orders.values:
+        #     ts_order = dt.datetime(order[0], order[1], order[2], 16)
+        #     if ts_today == ts_order:
+        #         symbol = order[3].strip(' ')
+        #         price_today = d_data['actual_close'][symbol].ix[ts_today]
+        #         shares = order[5]
+        #         total_today = shares * price_today
+        #         # update balance
+        #         # update holdings
+        #         # update value
+        #         print order[4].strip(' ') # action
+        #         print 
+        #         print d_data['actual_close']
 
-    # # Filling the data for NAN
-    # for s_key in ls_keys:
-    #     d_data[s_key] = d_data[s_key].fillna(method='ffill')
-    #     d_data[s_key] = d_data[s_key].fillna(method='bfill')
-    #     d_data[s_key] = d_data[s_key].fillna(1.0)
-
-    # for every date between start date and end date
     # if date_today = date_action
     # if action = buy then value += shares*share_price
     # if action == sell then value -= shares*share_price
