@@ -14,6 +14,7 @@ import QSTK.qstkutil.qsdateutil as du
 import QSTK.qstkutil.tsutil as tsu
 import QSTK.qstkutil.DataAccess as da
 
+import csv
 import sys
 import pandas as pd
 import numpy as np
@@ -72,11 +73,12 @@ def main():
     # TODO: don't use loops
     # for idx, pos in positions.iterrows():
     for i, ts_today in enumerate(ldt_timestamps):
-        if ts_today == dt_start:
-            positions['cash'].ix[ldt_timestamps[0]] = cash_initial
+        if i == 0:
+            positions['cash'].ix[ts_today] = cash_initial
         else:
-            positions.ix[ts_today] = positions.ix[i-1]
-        for ts_order, order in orders.iterrow():
+            ts_yesterday = ldt_timestamps[i-1]
+            positions.ix[ts_today] = positions.ix[ts_yesterday]
+        for ts_order, order in orders.iterrows():
             if ts_today == ts_order:
                 act = orders['action'].ix[ts_today]
                 sym = orders['symbol'].ix[ts_today]
@@ -89,17 +91,15 @@ def main():
                     positions['cash'].ix[ts_today] += shr*pri
                     positions[sym].ix[ts_today] -= shr
 
-    print positions
-
     # Write values from positions.
     values = np.zeros((len(ldt_timestamps), 4))
-    print ldt_timestamps
-    for idx, row in enumerate(positions.iterrows()):
-        values[idx, 0] = ldt_timestamps[idx].year
-        values[idx, 1] = ldt_timestamps[idx].month
-        values[idx, 2] = ldt_timestamps[idx].day
-        for col in positions.itertuples():
-            values[idx, 3] += row[col]
+    for i, ts_today in enumerate(ldt_timestamps):
+        values[i, 0] = ts_today.year
+        values[i, 1] = ts_today.month
+        values[i, 2] = ts_today.day
+        values[i, 3] = positions['cash'].ix[ts_today]
+        for sym in ls_symbols:
+            values[i, 3] += positions.ix[ts_today, [sym]]*d_data['actual_close'].ix[ts_today, [sym]]
 
     print values
 
