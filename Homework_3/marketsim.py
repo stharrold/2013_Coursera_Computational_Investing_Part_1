@@ -71,22 +71,29 @@ def main():
 
     # Update positions one day at a time.
     # TODO: don't use loops
-    for idx, pos in positions.iterrows():
+    # TODO: check for multiple orders at the same time
+    # for idx, pos in positions.iterrows():
+    for i, ts_today in enumerate(ldt_timestamps):
         try:
             act = orders['action'].ix[ts_today]
             sym = orders['symbol'].ix[ts_today]
             shr = orders['shares'].ix[ts_today]
             pri = d_data['actual_close'].ix[ts_today]
             if act == 'BUY':
-                if idx == 0:
-                    pos['cash'].ix[ts_today] = cash_initial - shr*pri
+                if ts_today == dt_start:
+                    positions['cash'].ix[ts_today] = cash_initial - shr*pri
+                    positions[sym].ix[ts_today] = shr
                 else:
-                    pos['cash'].ix[ts_today] = pos['cash'].ix[idx-1] - shr*pri
-                pos[sym].ix[ts_today] += shr
+                    positions['cash'].ix[ts_today] = positions['cash'].ix[i-1] - shr*pri
+                    positions[sym].ix[ts_today] = positions[sym].ix[i-1] + shr
             else:
                 # TODO: test that all values non-negative
-                pos['cash'].ix[ts_today] = pos['cash'].ix[idx-1] + shr*pri
-                pos[sym].ix[ts_today] -= shr
+                if ts_today == dt_start:
+                    positions['cash'].ix[ts_today] = cash_initial + shr*pri
+                    positions[sym].ix[ts_today] = -1. * shr
+                else:
+                    positions['cash'].ix[ts_today] = positions['cash'].ix[idx-1] + shr*pri
+                    positions[sym].ix[ts_today] = positions[sym].ix[i-1] - shr
         except:
             pass
 
@@ -94,7 +101,8 @@ def main():
 
     # Write values from positions.
     values = np.zeros((len(ldt_timestamps), 4))
-    for idx, row in positions.iterrows():
+    print ldt_timestamps
+    for idx, row in enumerate(positions.iterrows()):
         values[idx, 0] = ldt_timestamps[idx].year
         values[idx, 1] = ldt_timestamps[idx].month
         values[idx, 2] = ldt_timestamps[idx].day
