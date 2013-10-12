@@ -28,8 +28,8 @@ def main():
     # test that not overwriting another csv file
 
     # Start and end dates
-    dt_start = dt.datetime(2008, 12, 1)
-    dt_end = dt.datetime(2008, 12, 31)
+    dt_start = dt.datetime(2011, 1, 1)
+    dt_end = dt.datetime(2011, 12, 31)
     # We need closing prices so the timestamp should be hours=16.
     dt_timeofday = dt.timedelta(hours=16)
     # Get a list of trading days between the start and the end.
@@ -38,27 +38,32 @@ def main():
     # Read in starting cash balance, file names, and orders
     [cash_initial, orders_file, values_file] = sys.argv[1:4]
     # loading text from: http://wiki.quantsoftware.org/index.php?title=QSTK_Tutorial_2
-    orders_unindexed = pd.read_csv(orders_file, header=False, names=['year', 'month', 'day', 'symbol', 'action', 'shares'],\
+    orders = pd.read_csv(orders_file, header=False, names=['year', 'month', 'day', 'symbol', 'action', 'shares'],\
                              dtype={'year':int, 'month':int, 'day':int, 'symbol':str, 'action':str, 'shares':int})
-    ls_symbols = list(set([s.strip(' ') for s in orders_unindexed.symbol.tolist()]))
+    for i, order in orders.iterrows():
+        orders['symbol'].ix[i] = order['symbol'].strip(' ').upper()
+        orders['action'].ix[i] = order['action'].strip(' ').lower()
+    ls_symbols = list(set([orders['symbol'].tolist()]))
 
-    # Reindex orders.
-    # TODO: don't loop.
-    new_index = []
-    for idx, row in orders_unindexed.iterrows():
-        new_index += [dt.datetime(row['year'],
-                                  row['month'],
-                                  row['day'],
-                                  16)]
-    orders = orders_unindexed.reindex(index = new_index, columns = ['symbol', 'action', 'shares'])
-    for ts_order, row in orders_unindexed.iterrows():
-        orders['symbol'].ix[ts_order] = row['symbol'].strip(' ')
-        orders['action'].ix[ts_order] = row['action'].strip(' ')
-        orders['shares'].ix[ts_order] = row['shares']
+    # # OLD, need unique index for orders to loop over.
+    # # Reindex orders.
+    # # TODO: don't loop.
+    # new_index = []
+    # for idx, row in orders_unindexed.iterrows():
+    #     new_index += [dt.datetime(row['year'],
+    #                               row['month'],
+    #                               row['day'],
+    #                               16)]
+    # orders = orders_unindexed.reindex(index = new_index, columns = ['symbol', 'action', 'shares'])
+    # for ts_order, row in orders_unindexed.iterrows():
+    #     orders['symbol'].ix[ts_order] = row['symbol'].strip(' ')
+    #     orders['action'].ix[ts_order] = row['action'].strip(' ')
+    #     orders['shares'].ix[ts_order] = row['shares']
 
     # Fetch stock data and fill in NANs.
     c_dataobj = da.DataAccess('Yahoo')
-    ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
+    # ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
+    ls_keys = ['actual_close']
     ldf_data = c_dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
     d_data = dict(zip(ls_keys, ldf_data))
     for s_key in ls_keys:
@@ -77,11 +82,14 @@ def main():
         else:
             ts_yesterday = ldt_timestamps[i-1]
             positions.ix[ts_today] = positions.ix[ts_yesterday]
-        for ts_order, order in orders.iterrows():
+        for i, order in orders.iterrows():
+            ts_order = dt.datetime(order['year'], order['month'], order['day'], 16)
             if ts_today == ts_order:
-                act = orders['action'].ix[ts_today]
-                sym = orders['symbol'].ix[ts_today]
-                shr = orders['shares'].ix[ts_today]
+                act = order['action']
+                sym = order['symbol']
+                shr = order['shares']
+                print act, sym, shr
+                print type(shr)
                 pri = d_data['actual_close'][sym].ix[ts_today]
                 # TODO: positions.ix[ts_today, [sym]] causes TypeError. Why?
                 if act == 'BUY':
