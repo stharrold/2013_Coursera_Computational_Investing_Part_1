@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 """
-Homework 3
+Homework 3, Part 1
 http://wiki.quantsoftware.org/index.php?title=CompInvesti_Homework_3
 Market simulation
 Usage:
