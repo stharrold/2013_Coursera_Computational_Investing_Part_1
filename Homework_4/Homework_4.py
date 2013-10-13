@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 """
-Homework 4, Part 1
+Homework 4, Parts 1-3
 http://wiki.quantsoftware.org/index.php?title=CompInvestI_Homework_4
 Outputs file with orders.
 Usage:
@@ -22,8 +22,9 @@ import copy
 
 def main():
 
-    [orders_file] = sys.argv[1]
-    
+    cash_initial = 50000
+    print "cash_initial = ", cash_initial
+
     dt_start = dt.datetime(2008, 1, 1, 16)
     dt_end = dt.datetime(2009, 12, 31, 16)
     ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt.timedelta(hours=16))
@@ -53,18 +54,90 @@ def main():
     #             s_market_sym='SPY')
 
     # TODO: Don't loop. Use where.
-    orders = pd.DataFrame(index=ldt_timestamps, columns=['symbol', 'action', 'shares'])
+    orders = pd.DataFrame(columns=['timestamp', 'symbol', 'action', 'shares'])
     for sym in ls_symbols:
         for its, ts_today in enumerate(ldt_timestamps):
             ts_todayp5 = ldt_timestamps[its+5]
             if df_events[sym].ix[ts_today] == 1:
-                orders['symbol'].ix[ts_today] = sym
-                orders['action'].ix[ts_today] = 'buy'
-                orders['shares'].ix[ts_today] = 100
-                orders['symbol'].ix[ts_todayp5] = sym
-                orders['action'].ix[ts_todayp5] = 'sell'
-                orders['shares'].ix[ts_todayp5] = 100
-    orders.to_csv(orders_file)
+                new_buy_order  = pd.DataFrame([dict(timestamp=ts_today, symbol=sym, action='buy', shares=100), ])
+                orders = orders.append(new_buy_order, ignore_index=True)
+                new_sell_order = pd.DataFrame([dict(timestamp=ts_todayp5, symbol=sym, action='sell', shares=100), ])
+                orders = orders.append(new_sell_order, ignore_index=True)
+    orders.to_csv('orders.csv')
+
+    # Create data frame for positions.
+    positions = pd.DataFrame(0., index = ldt_timestamps, columns = ['cash'] + ls_symbols)
+
+    # Update positions one day at a time.
+    # TODO: don't use loops
+    for its, ts_today in enumerate(ldt_timestamps):
+        if its == 0:
+            positions['cash'].ix[ts_today] = cash_initial
+        else:
+            ts_yesterday = ldt_timestamps[its-1]
+            positions.ix[ts_today] = positions.ix[ts_yesterday]
+        for iord, order in orders.iterrows():
+            ts_order = order['timestamp']
+            if ts_today == ts_order:
+                act = order['action']
+                sym = order['symbol']
+                shr = order['shares']
+                pri = d_data['actual_close'][sym].ix[ts_today]
+                # TODO: positions.ix[ts_today, [sym]] causes TypeError. Why?
+                if act == 'buy':
+                    positions['cash'].ix[ts_today] -= shr*pri
+                    positions[sym].ix[ts_today]    += shr
+                elif act == 'sell':
+                    positions['cash'].ix[ts_today] += shr*pri
+                    positions[sym].ix[ts_today]    -= shr
+                else:
+                    print "ERROR: act neither buy nor sell."
+                    print "act = ", act
+    positions.to_csv('positions.csv')
+
+    # Write values from positions.
+    values = pd.DataFrame(0., index = ldt_timestamps, columns = ['value'])
+    for its, ts_today in enumerate(ldt_timestamps):
+        values['value'].ix[ts_today] = positions['cash'].ix[ts_today]
+        # TODO: positions.ix[ts_today, [sym]] causes TypeError. Why?
+        for sym in ls_symbols:
+            values['value'].ix[ts_today] += positions[sym].ix[ts_today] * d_data['actual_close'][sym].ix[ts_today]
+    values.to_csv(values.csv)
+
+    # for fund
+    na_price = values['value'].values
+    na_normalized_price = na_price / na_price[0]
+    na_rets = na_normalized_price.copy()
+    tsu.returnize0(na_rets)
+    daily_ret_fund = na_rets
+    avg_daily_ret_fund = np.average(daily_ret_fund)
+    std_daily_ret_fund = np.std(daily_ret_fund)
+    sharpe_ratio_fund = tsu.get_sharpe_ratio(rets=daily_ret_fund, risk_free=0.00)
+    total_ret_fund = na_normalized_price[-1]
+    
+    # for comparision symbol
+    # TODO: Flatten na_price list of lists.
+    na_price = d_data['actual_close']['SPY'].values
+    na_normalized_price = na_price / na_price[0]
+    na_rets = na_normalized_price.copy()
+    tsu.returnize0(na_rets)
+    daily_ret_comp = na_rets
+    avg_daily_ret_comp = np.average(daily_ret_comp)
+    std_daily_ret_comp = np.std(daily_ret_comp)
+    sharpe_ratio_comp = tsu.get_sharpe_ratio(rets=daily_ret_comp, risk_free=0.00)
+    total_ret_comp = na_normalized_price[-1]
+
+    print "sharpe_ratio_fund = ", sharpe_ratio_fund
+    print "sharpe_ratio_comp = ", sharpe_ratio_comp
+
+    print "total_ret_fund = ", total_ret_fund
+    print "total_ret_comp = ", total_ret_comp
+
+    print "std_daily_ret_fund = ", std_daily_ret_fund
+    print "std_daily_ret_comp = ", std_daily_ret_comp
+
+    print "avg_daily_ret_fund = ", avg_daily_ret_fund
+    print "avg_daily_ret_comp = ", avg_daily_ret_comp
 
     return
 
