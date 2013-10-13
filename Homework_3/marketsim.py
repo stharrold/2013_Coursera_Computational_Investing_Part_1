@@ -28,8 +28,8 @@ def main():
     # test that not overwriting another csv file
 
     # Start and end dates
-    dt_start = dt.datetime(2011, 1, 1)
-    dt_end = dt.datetime(2011, 12, 31)
+    dt_start = dt.datetime(2011, 1, 10, 16)
+    dt_end = dt.datetime(2011, 12, 20, 16)
     # We need closing prices so the timestamp should be hours=16.
     dt_timeofday = dt.timedelta(hours=16)
     # Get a list of trading days between the start and the end.
@@ -38,27 +38,12 @@ def main():
     # Read in starting cash balance, file names, and orders
     [cash_initial, orders_file, values_file] = sys.argv[1:4]
     # loading text from: http://wiki.quantsoftware.org/index.php?title=QSTK_Tutorial_2
-    orders = pd.read_csv(orders_file, header=False, names=['year', 'month', 'day', 'symbol', 'action', 'shares'],\
-                             dtype={'year':int, 'month':int, 'day':int, 'symbol':str, 'action':str, 'shares':int})
+    orders = pd.read_csv(orders_file, header=None, names=['year', 'month', 'day', 'symbol', 'action', 'shares'])
+    #                             dtype={'year':int, 'month':int, 'day':int, 'symbol':str, 'action':str, 'shares':int})
     for i, order in orders.iterrows():
         orders['symbol'].ix[i] = order['symbol'].strip(' ').upper()
         orders['action'].ix[i] = order['action'].strip(' ').lower()
-    ls_symbols = list(set([orders['symbol'].tolist()]))
-
-    # # OLD, need unique index for orders to loop over.
-    # # Reindex orders.
-    # # TODO: don't loop.
-    # new_index = []
-    # for idx, row in orders_unindexed.iterrows():
-    #     new_index += [dt.datetime(row['year'],
-    #                               row['month'],
-    #                               row['day'],
-    #                               16)]
-    # orders = orders_unindexed.reindex(index = new_index, columns = ['symbol', 'action', 'shares'])
-    # for ts_order, row in orders_unindexed.iterrows():
-    #     orders['symbol'].ix[ts_order] = row['symbol'].strip(' ')
-    #     orders['action'].ix[ts_order] = row['action'].strip(' ')
-    #     orders['shares'].ix[ts_order] = row['shares']
+    ls_symbols = list(set(orders['symbol'].tolist()))
 
     # Fetch stock data and fill in NANs.
     c_dataobj = da.DataAccess('Yahoo')
@@ -76,40 +61,42 @@ def main():
 
     # Update positions one day at a time.
     # TODO: don't use loops
-    for i, ts_today in enumerate(ldt_timestamps):
-        if i == 0:
+    for its, ts_today in enumerate(ldt_timestamps):
+        if its == 0:
             positions['cash'].ix[ts_today] = cash_initial
         else:
-            ts_yesterday = ldt_timestamps[i-1]
+            ts_yesterday = ldt_timestamps[its-1]
             positions.ix[ts_today] = positions.ix[ts_yesterday]
-        for i, order in orders.iterrows():
+        for iord, order in orders.iterrows():
             ts_order = dt.datetime(order['year'], order['month'], order['day'], 16)
             if ts_today == ts_order:
                 act = order['action']
                 sym = order['symbol']
                 shr = order['shares']
-                print act, sym, shr
-                print type(shr)
                 pri = d_data['actual_close'][sym].ix[ts_today]
                 # TODO: positions.ix[ts_today, [sym]] causes TypeError. Why?
-                if act == 'BUY':
+                if act == 'buy':
                     positions['cash'].ix[ts_today] -= shr*pri
                     positions[sym].ix[ts_today]    += shr
-                else:
+                elif act == 'sell':
                     positions['cash'].ix[ts_today] += shr*pri
                     positions[sym].ix[ts_today]    -= shr
+                else:
+                    print "ERROR: act neither buy nor sell."
+                    print "act = ", act
 
     # Write values from positions.
     values = pd.DataFrame(0., index = ldt_timestamps, columns = ['year', 'month', 'day', 'value'])
-    for i, ts_today in enumerate(ldt_timestamps):
+    for its, ts_today in enumerate(ldt_timestamps):
         values['year'].ix[ts_today]  = ts_today.year
         values['month'].ix[ts_today] = ts_today.month
         values['day'].ix[ts_today]   = ts_today.day
-        values['value'].ix[ts_today] = positions.ix[ts_today, ['cash']]
+        values['value'].ix[ts_today] = positions['cash'].ix[ts_today]
         # TODO: positions.ix[ts_today, [sym]] causes TypeError. Why?
         for sym in ls_symbols:
             values['value'].ix[ts_today] += positions[sym].ix[ts_today] * d_data['actual_close'][sym].ix[ts_today]
     values.to_csv(values_file)
+
     return
 
 if __name__ == '__main__':
