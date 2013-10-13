@@ -22,6 +22,8 @@ import copy
 
 def main():
 
+    [orders_file] = sys.argv[1]
+    
     dt_start = dt.datetime(2008, 1, 1, 16)
     dt_end = dt.datetime(2009, 12, 31, 16)
     ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt.timedelta(hours=16))
@@ -50,7 +52,19 @@ def main():
     #             s_filename='MyEventStudy_' + list_name + '_Question3_Attempt2.pdf', b_market_neutral=True, b_errorbars=True,
     #             s_market_sym='SPY')
 
-    # write orders
+    # TODO: Don't loop. Use where.
+    orders = pd.DataFrame(index=ldt_timestamps, columns=['symbol', 'action', 'shares'])
+    for sym in ls_symbols:
+        for its, ts_today in enumerate(ldt_timestamps):
+            ts_todayp5 = ldt_timestamps[its+5]
+            if df_events[sym].ix[ts_today] == 1:
+                orders['symbol'].ix[ts_today] = sym
+                orders['action'].ix[ts_today] = 'buy'
+                orders['shares'].ix[ts_today] = 100
+                orders['symbol'].ix[ts_todayp5] = sym
+                orders['action'].ix[ts_todayp5] = 'sell'
+                orders['shares'].ix[ts_todayp5] = 100
+    orders.to_csv(orders_file)
 
     return
 

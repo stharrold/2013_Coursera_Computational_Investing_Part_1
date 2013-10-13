@@ -14,7 +14,6 @@ import QSTK.qstkutil.qsdateutil as du
 import QSTK.qstkutil.tsutil as tsu
 import QSTK.qstkutil.DataAccess as da
 
-import csv
 import sys
 import pandas as pd
 import numpy as np
