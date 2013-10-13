@@ -47,8 +47,8 @@ def main():
     c_dataobj = da.DataAccess('Yahoo')
     # Start and end dates
     # TODO: Get from values.csv
-    dt_start = dt.datetime(2011, 1, 10, 16)
-    dt_end = dt.datetime(2011, 12, 20, 16)
+    dt_start = dt.datetime(2011, 1, 1, 16)
+    dt_end = dt.datetime(2011, 12, 31, 16)
     dt_timeofday = dt.timedelta(hours=16)
     ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt_timeofday)
     ls_symbols = [comp_symbol]

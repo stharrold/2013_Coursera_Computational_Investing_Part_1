@@ -28,8 +28,8 @@ def main():
     # test that not overwriting another csv file
 
     # Start and end dates
-    dt_start = dt.datetime(2011, 1, 10, 16)
-    dt_end = dt.datetime(2011, 12, 20, 16)
+    dt_start = dt.datetime(2011, 1, 1, 16)
+    dt_end = dt.datetime(2011, 12, 31, 16)
     # We need closing prices so the timestamp should be hours=16.
     dt_timeofday = dt.timedelta(hours=16)
     # Get a list of trading days between the start and the end.
@@ -44,6 +44,7 @@ def main():
         orders['symbol'].ix[i] = order['symbol'].strip(' ').upper()
         orders['action'].ix[i] = order['action'].strip(' ').lower()
     ls_symbols = list(set(orders['symbol'].tolist()))
+    print orders
 
     # Fetch stock data and fill in NANs.
     c_dataobj = da.DataAccess('Yahoo')
