@@ -111,7 +111,7 @@ def calculate_positions(f_start_cash, ls_symbols, df_orders, df_close):
                 else:
                     print "ERROR: act neither buy nor sell."
                     print "act = ", act
-    ts_yesterday = ts_today
+        ts_yesterday = ts_today
     return df_positions
 
 def calculate_values(ls_symbols, df_positions, df_close):
