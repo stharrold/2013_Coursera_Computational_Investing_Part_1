@@ -20,8 +20,8 @@ import copy
 import numpy as np
 import pandas as pd
 import datetime as dt
- 
-def create_df_events(ls_symbols, df_close, f_cutoff):
+
+def create_df_events(f_cutoff, ls_symbols, df_close):
     """
     Create events dataframe.
     Accepts a list of symbols along with start and end date
@@ -95,7 +95,7 @@ def create_df_orders(ls_symbols, df_events):
     df_orders.index=range(len(df_test))[::-1]
     return df_orders
 
-def create_df_positions(f_start_cash, ls_symbols, df_orders, df_close):
+def create_df_positions(f_start_cash, ls_symbols, df_close, df_orders):
     """
     Create a data frame of positions in cash and shares.
     """
@@ -147,10 +147,113 @@ def create_df_values(ls_symbols, df_positions, df_close):
             df_values['value'].ix[dt_today] += f_share * f_pri
     return df_values
 
+def create_lf_performance(na_values):
+    """
+    Compute performance for 1D numpy array of values.
+    Return a list of floats.
+    """
+    f_total_return = na_values[:-1] / na_values[0]
+    na_daily_returns = na_values[1:]/na_values[:-1]
+    f_avg_daily_return = np.average(na_daily_returns)
+    f_stddev_daily_return = np.std(na_daily_returns)
+    f_day_annualized_sharpe_ratio = math.sqrt(252.) * f_avg_daily_return / f_stddev_daily_return
+    return [f_total_return,
+            f_avg_daily_return,
+            f_stddev_daily_return,
+            f_day_annualized_sharpe_ratio]
+
 def main():
     """
     Main program.
     """
 
+    print "dt_start = ", dt_start
+    print "dt_end = ", dt_end
+    dt_timeofday = dt.timedelta(hours=16)
+    ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt_timeofday)
+
+    print "Importing data."
+    c_dataobj = da.DataAccess('Yahoo')
+    list_name = 'sp5002012'
+    ls_symbols = c_dataobj.get_symbols_from_list(list_name)
+    # TODO: Track index separately from composite stocks. Trigger could activate off of index.
+    ls_symbols.append('SPY')
+    # ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
+    s_key = 'close'
+    ls_keys = [s_key]
+    ldf_data = c_dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
+    d_data = dict(zip(ls_keys, ldf_data))
+    # TODO: Track index separately from composite stocks. Trigger could activate off of index.
+    df_close = d_data[s_key].copy()
+    for s_sym in ls_symbols:
+        df_close[s_sym] = df_close[s_sym].fillna(method='ffill')
+        df_close[s_sym] = df_close[s_sym].fillna(method='bfill')
+        df_close[s_sym] = df_close[s_sym].fillna(1.0)
+    print "Writing df_close.csv."
+    df_close.to_csv('df_close.csv')
+
+    print "Creating events."
+    df_events = create_df_events(f_cutoff=f_cutoff,
+                                 ls_symbols=ls_symbols,
+                                 df_close=df_close)
+    print "Writing df_events.csv."
+    df_events.to_csv('df_events.csv')
+
+    print "Creating orders."
+    df_orders = create_df_orders(ls_symbols=ls_symbols,
+                                 df_events=df_events)
+    print "Writing df_orders.csv."
+    df_orders.to_csv('df_orders.csv')
+
+    print "Calculating positions."
+    df_positions = create_df_positions(f_start_cash=f_start_cash,
+                                       ls_symbols=ls_symbols,
+                                       df_close=df_close,
+                                       df_orders=df_orders)
+    print "Writing df_positions.csv."
+    df_positions.to_csv('df_positions.csv')
+    
+    print "Calculating fund values."
+    df_values = create_df_values(ls_symbols=ls_symbols,
+                                 df_positions=df_positions
+                                 df_close=df_close)
+    print "Writing values.csv."
+    df_values.to_csv('df_values.csv')
+    
+    print "Calculating performance."
+    na_fund_values = df_values['value'].values
+    [f_fund_total_return,
+     f_fund_avg_daily_return,
+     f_fund_stddev_daily_return,
+     f_fund_day_annualized_sharpe_ratio] = create_lf_performance(na_values=na_fund_values)
+
+    na_comp_values = df_close['SPY'].values
+    [f_comp_total_return,
+     f_comp_avg_daily_return,
+     f_comp_stddev_daily_return,
+     f_comp_day_annualized_sharpe_ratio] = create_lf_performance(na_values=na_comp_values)
+
+    print "f_fund_day_annualized_sharpe_ratio = ", f_fund_day_annualized_sharpe_ratio
+    print "f_comp_day_annualized_sharpe_ratio = ", f_comp_day_annualized_sharpe_ratio
+
+    print "f_fund_total_return = ", f_fund_total_return
+    print "f_comp_total_return = ", f_comp_total_return
+
+    print "f_fund_stddev_daily_return = ", f_fund_stddev_daily_return
+    print "f_comp_stddev_daily_return = ", f_comp_stddev_daily_return
+
+    print "f_fund_avg_daily_return = ", f_fund_avg_daily_return
+    print "f_comp_avg_daily_return = ", f_comp_avg_daily_return
+
+    return
+    
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 1:
+        f_start_cash = 50000.
+        f_cutoff = 5.
+        dt_start = dt.datetime(2008, 01, 01)
+        dt_end   = dt.datetime(2009, 12, 31)
+        main()
+    else:
+        print "Usage: ./Homework_4.py"
+
