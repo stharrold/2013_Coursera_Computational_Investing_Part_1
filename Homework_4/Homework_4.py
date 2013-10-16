@@ -256,7 +256,7 @@ if __name__ == '__main__':
         main(f_start_cash=f_start_cash,
              f_cutoff=f_cutoff,
              dt_start=dt_start,
-             dt_end=dt_end
+             dt_end=dt_end,
              s_key=s_key)
     else:
         print "Usage: ./Homework_4.py"
