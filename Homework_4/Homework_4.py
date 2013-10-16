@@ -51,7 +51,7 @@ def create_df_events(f_cutoff, ls_symbols, df_close):
             dt_today = dt_timestamp
             f_sym_price_today = df_close[s_sym].ix[dt_today]
              # TODO: vectorize using where on temp frame
-            if f_sym_price_yest >= f_cutoff and f_sym_price_today < f_cutoff:
+            if f_sym_price_yesterday >= f_cutoff and f_sym_price_today < f_cutoff:
                 df_events[s_sym].ix[dt_today] = True
             else:
                 False
@@ -76,18 +76,18 @@ def create_df_orders(ls_symbols, df_events):
             # TODO: Use where instead of looping.
             if df_events[sym].ix[dt_timestamp] == True:
                 dt_buy_date = dt_timestamp
-                df_buy_order = pd.DataFrame([{'timestamp':dt_buy_date,
-                                              'symbol':s_sym,
-                                              'action':'buy'
-                                              'shares':100.}])
+                df_buy_order = pd.DataFrame([{'timestamp': dt_buy_date,
+                                              'symbol': s_sym,
+                                              'action': 'buy',
+                                              'shares': 100.}])
                 # TODO: Don't add rows to a dataframe, inefficient.
                 df_orders = df_orders.append(df_buy_order, ignore_index=True, verify_integrity=True)
                 try:
                     dt_sell_date = ldt_timestamps[i_idx+5]
-                    df_sell_order = pd.DataFrame([{'timestamp':dt_sell_date,
-                                                  'symbol':s_sym,
-                                                  'action':'sell'
-                                                  'shares':100.}])
+                    df_sell_order = pd.DataFrame([{'timestamp': dt_sell_date,
+                                                   'symbol': s_sym,
+                                                   'action': 'sell',
+                                                   'shares': 100.}])
                     df_orders = df_orders.append(df_sell_order, ignore_index=True, verify_integrity=True)
                 except:
                     print "ldt_timestamps[i_idx+5] not possible for ", dt_buy_date
@@ -162,7 +162,7 @@ def create_lf_performance(na_values):
             f_stddev_daily_return,
             f_day_annualized_sharpe_ratio]
 
-def main():
+def main(f_start_cash, f_cutoff, dt_start, dt_end, s_key):
     """
     Main program.
     """
@@ -179,7 +179,6 @@ def main():
     # TODO: Track index separately from composite stocks. Trigger could activate off of index.
     ls_symbols.append('SPY')
     # ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
-    s_key = 'close'
     ls_keys = [s_key]
     ldf_data = c_dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
     d_data = dict(zip(ls_keys, ldf_data))
@@ -215,7 +214,7 @@ def main():
     
     print "Calculating fund values."
     df_values = create_df_values(ls_symbols=ls_symbols,
-                                 df_positions=df_positions
+                                 df_positions=df_positions,
                                  df_close=df_close)
     print "Writing values.csv."
     df_values.to_csv('df_values.csv')
@@ -251,9 +250,14 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         f_start_cash = 50000.
         f_cutoff = 5.
-        dt_start = dt.datetime(2008, 01, 01)
-        dt_end   = dt.datetime(2009, 12, 31)
-        main()
+        dt_start = dt.datetime(2008, 01, 03, 16)
+        dt_end   = dt.datetime(2009, 12, 28, 16)
+        s_key = 'close'
+        main(f_start_cash=f_start_cash,
+             f_cutoff=f_cutoff,
+             dt_start=dt_start,
+             dt_end=dt_end
+             s_key=s_key)
     else:
         print "Usage: ./Homework_4.py"
 
