@@ -67,14 +67,14 @@ def create_df_orders(ls_symbols, df_events):
     # TODO: Could skip creating this order list and save time.
     ldt_timestamps = df_events.index
     ls_columns = ['timestamp', 'symbol', 'action', 'shares']
-    df_orders = pd.Dataframe(columns=ls_columns)
+    df_orders = pd.DataFrame(columns=ls_columns)
     # TODO: Vectorize using arith on subframess
     for i_idx, dt_timestamp in enumerate(ldt_timestamps):
         # TODO: Take symbols from events
         # TODO: Vectorize using arith on series
         for s_sym in ls_symbols:
             # TODO: Use where instead of looping.
-            if df_events[sym].ix[dt_timestamp] == True:
+            if df_events[s_sym].ix[dt_timestamp] == True:
                 dt_buy_date = dt_timestamp
                 df_buy_order = pd.DataFrame([{'timestamp': dt_buy_date,
                                               'symbol': s_sym,
@@ -92,12 +92,13 @@ def create_df_orders(ls_symbols, df_events):
                 except:
                     print "ldt_timestamps[i_idx+5] not possible for ", dt_buy_date
     df_orders.sort(columns='timestamp', inplace=True)
-    df_orders.index=range(len(df_test))[::-1]
+    df_orders.index=range(len(df_orders))
     return df_orders
 
 def create_df_positions(f_start_cash, ls_symbols, df_close, df_orders):
     """
     Create a data frame of positions in cash and shares.
+    PROBABLY RIGHT FROM TERMINAL OUTPUT.
     """
     ldt_timestamps = df_close.index
     # TODO: Get symbols from df_close.
@@ -111,27 +112,28 @@ def create_df_positions(f_start_cash, ls_symbols, df_close, df_orders):
             df_positions['cash'].ix[dt_today] = f_start_cash
         else:
             df_positions.ix[dt_today] = df_positions.ix[dt_yesterday]
-            for df_order in df_orders.iterrows():
-                if dt_today == df_order['timestamp']:
-                    s_act = df_order['action']
-                    s_sym = df_order['symbol']
-                    f_shr = df_order['shares']
-                    f_pri = df_close[sym].ix[dt_today]
-                    if s_act == 'buy':
-                        df_positions['cash'].ix[dt_today] -= f_shr * f_pri
-                        df_positions[sym].ix[dt_today]    += f_shr
-                    elif s_act == 'sell':
-                        df_positions['cash'].ix[dt_today] += f_shr * f_pri
-                        df_positions[sym].ix[dt_today]    -= f_shr
-                    else:
-                        print "ERROR: s_act neither buy nor sell."
-                        print "s_act = ", s_act
+        for i_ord, df_order in df_orders.iterrows():
+            if dt_today == df_order['timestamp']:
+                s_sym = df_order['symbol']
+                s_act = df_order['action']
+                f_shr = df_order['shares']
+                f_pri = df_close[s_sym].ix[dt_today]
+                if s_act == 'buy':
+                    df_positions['cash'].ix[dt_today] -= f_shr * f_pri
+                    df_positions[s_sym].ix[dt_today]  += f_shr
+                elif s_act == 'sell':
+                    df_positions['cash'].ix[dt_today] += f_shr * f_pri
+                    df_positions[s_sym].ix[dt_today]  -= f_shr
+                else:
+                    print "ERROR: s_act neither buy nor sell."
+                    print "s_act = ", s_act
         dt_yesterday = dt_today
     return df_positions
 
 def create_df_values(ls_symbols, df_positions, df_close):
     """
     Create a dataframe of values from cash and share positions.
+    PROBABLY WORKING FROM TERMINAL PRINT.
     """
     ldt_timestamps = df_close.index
     df_values = pd.DataFrame(0., index=ldt_timestamps, columns=['value'])
@@ -142,18 +144,20 @@ def create_df_values(ls_symbols, df_positions, df_close):
         # TODO: Get symbols from df_close.
         # TODO: Vectorize using arith on series.
         for s_sym in ls_symbols:
-            f_shr = df_positions[sym].ix[dt_today]
-            f_pri = df_close[sym].ix[dt_today]
-            df_values['value'].ix[dt_today] += f_share * f_pri
+            f_shr = df_positions[s_sym].ix[dt_today]
+            if f_shr > 0.:
+                f_pri = df_close[s_sym].ix[dt_today]
+                df_values['value'].ix[dt_today] += f_shr * f_pri
     return df_values
 
 def create_lf_performance(na_values):
     """
     Compute performance for 1D numpy array of values.
     Return a list of floats.
+    VALIDATED AS WORKING.
     """
-    f_total_return = na_values[:-1] / na_values[0]
-    na_daily_returns = na_values[1:]/na_values[:-1]
+    f_total_return = na_values[-1] / na_values[0]
+    na_daily_returns = na_values[1:]/na_values[:-1] - 1.
     f_avg_daily_return = np.average(na_daily_returns)
     f_stddev_daily_return = np.std(na_daily_returns)
     f_day_annualized_sharpe_ratio = math.sqrt(252.) * f_avg_daily_return / f_stddev_daily_return
@@ -164,7 +168,7 @@ def create_lf_performance(na_values):
 
 def main(f_start_cash, f_cutoff, dt_start, dt_end, s_key):
     """
-    Main program.
+    Main program for Homework 4.
     """
 
     print "dt_start = ", dt_start
@@ -232,32 +236,143 @@ def main(f_start_cash, f_cutoff, dt_start, dt_end, s_key):
      f_comp_stddev_daily_return,
      f_comp_day_annualized_sharpe_ratio] = create_lf_performance(na_values=na_comp_values)
 
+    print
     print "f_fund_day_annualized_sharpe_ratio = ", f_fund_day_annualized_sharpe_ratio
     print "f_comp_day_annualized_sharpe_ratio = ", f_comp_day_annualized_sharpe_ratio
-
+    print
     print "f_fund_total_return = ", f_fund_total_return
     print "f_comp_total_return = ", f_comp_total_return
-
+    print
     print "f_fund_stddev_daily_return = ", f_fund_stddev_daily_return
     print "f_comp_stddev_daily_return = ", f_comp_stddev_daily_return
-
+    print
     print "f_fund_avg_daily_return = ", f_fund_avg_daily_return
     print "f_comp_avg_daily_return = ", f_comp_avg_daily_return
+    print
 
     return
+
+def read_orders(s_orders_file):
+    df_orders = pd.read_csv(s_orders_file, header=None, names=['year',
+                                                               'month',
+                                                               'day',
+                                                               'symbol',
+                                                               'action',
+                                                               'shares'])
+    ldt_timestamps = [None]*len(df_orders)
+    for i_ord, df_order in df_orders.iterrows():
+        df_orders['symbol'].iloc[i_ord] = df_order['symbol'].strip(' ').upper()
+        df_orders['action'].iloc[i_ord] = df_order['action'].strip(' ').lower()
+        ldt_timestamps[i_ord] = dt.datetime(df_order['year'], df_order['month'], df_order['day'], 16)
+    df_orders['timestamp'] = pd.Series(ldt_timestamps, index=df_orders.index)
+    return df_orders
+
+
+def test_marketsim_analyze(f_start_cash, s_orders_file, s_key):
+    """
+    Test marketsim and analyze portions of Homework 4 from Homework 3.
+    """
+
+    print "Reading orders."
+    df_orders = read_orders(s_orders_file=s_orders_file)
+    dt_start = df_orders['timestamp'].iloc[0]
+    dt_end = df_orders['timestamp'].iloc[-1]
+
+    print "dt_start = ", dt_start
+    print "dt_end = ", dt_end
+    dt_timeofday = dt.timedelta(hours=16)
+    ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt_timeofday)
+
+    print "Importing data."
+    c_dataobj = da.DataAccess('Yahoo')
+    ls_symbols = list(set(df_orders['symbol'].tolist()))
+    # TODO: Track index separately from composite stocks. Trigger could activate off of index.
+    ls_symbols.append('SPY')
+    # ls_keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
+    ls_keys = [s_key]
+    ldf_data = c_dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
+    d_data = dict(zip(ls_keys, ldf_data))
+    # TODO: Track index separately from composite stocks. Trigger could activate off of index.
+    df_close = d_data[s_key].copy()
+    for s_sym in ls_symbols:
+        df_close[s_sym] = df_close[s_sym].fillna(method='ffill')
+        df_close[s_sym] = df_close[s_sym].fillna(method='bfill')
+        df_close[s_sym] = df_close[s_sym].fillna(1.0)
+    print "Writing df_close.csv."
+    df_close.to_csv('df_close.csv')
+
+    print "Calculating positions."
+    df_positions = create_df_positions(f_start_cash=f_start_cash,
+                                       ls_symbols=ls_symbols,
+                                       df_close=df_close,
+                                       df_orders=df_orders)
+    print "Writing df_positions.csv."
+    df_positions.to_csv('df_positions.csv')
     
+    print "Calculating fund values."
+    df_values = create_df_values(ls_symbols=ls_symbols,
+                                 df_positions=df_positions,
+                                 df_close=df_close)
+    print "Writing values.csv."
+    df_values.to_csv('df_values.csv')
+    
+    print "Calculating performance."
+    na_fund_values = df_values['value'].values
+    [f_fund_total_return,
+     f_fund_avg_daily_return,
+     f_fund_stddev_daily_return,
+     f_fund_day_annualized_sharpe_ratio] = create_lf_performance(na_values=na_fund_values)
+
+    na_comp_values = df_close['SPY'].values
+    [f_comp_total_return,
+     f_comp_avg_daily_return,
+     f_comp_stddev_daily_return,
+     f_comp_day_annualized_sharpe_ratio] = create_lf_performance(na_values=na_comp_values)
+
+    print
+    print "f_fund_day_annualized_sharpe_ratio = ", f_fund_day_annualized_sharpe_ratio
+    print "f_comp_day_annualized_sharpe_ratio = ", f_comp_day_annualized_sharpe_ratio
+    print
+    print "f_fund_total_return = ", f_fund_total_return
+    print "f_comp_total_return = ", f_comp_total_return
+    print
+    print "f_fund_stddev_daily_return = ", f_fund_stddev_daily_return
+    print "f_comp_stddev_daily_return = ", f_comp_stddev_daily_return
+    print
+    print "f_fund_avg_daily_return = ", f_fund_avg_daily_return
+    print "f_comp_avg_daily_return = ", f_comp_avg_daily_return
+    print
+
+    return
+
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         f_start_cash = 50000.
-        f_cutoff = 5.
-        dt_start = dt.datetime(2008, 01, 03, 16)
-        dt_end   = dt.datetime(2009, 12, 28, 16)
+        f_cutoff = 6.
+        dt_start = dt.datetime(2008, 01, 01, 16)
+        dt_end   = dt.datetime(2009, 12, 31, 16)
+        # NOTE: Sharpe ratio is about +0.4 off.
+        # with actual_close: sharp fund/comp wrong/ok; total ok; stddev wrong/ok; avg ok
+        # with close: sharpe fund/comp wrong/ok; total ok; stddev fund/spx wrong/right; avg ok
         s_key = 'close'
+        print "Doing Homework 4."
         main(f_start_cash=f_start_cash,
              f_cutoff=f_cutoff,
              dt_start=dt_start,
              dt_end=dt_end,
              s_key=s_key)
+    elif len(sys.argv) == 2:
+        f_start_cash = 1000000
+        s_orders_file = sys.argv[1]
+        s_key = 'close'
+        # with close: sharpe wrong; total right; stddev fund/spx wrong/right; avg wrong
+        # with actual_close: sharpe wrong; total right; stddev fund/spx wrong/right; avg wrong
+        print "Testing marketsim and analyze."
+        test_marketsim_analyze(f_start_cash=f_start_cash,
+                               s_orders_file=s_orders_file,
+                               s_key=s_key)
     else:
-        print "Usage: ./Homework_4.py"
+        print "Usage:"
+        print "$ ./Homework_4.py"
+        print "$ ./Homework_4.py orders.csv"
 
